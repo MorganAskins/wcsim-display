@@ -1,0 +1,724 @@
+#include "drawevent.h"
+
+drawevent::drawevent(float aCylinderRadius, float aCylinderHeight,
+		     float aReduction, float aMaxPe, float aUpperTime,
+		     float aLowerTime, float aUpperPe, float aLowerPe,
+		     float aUpperTimeHisto, float aLowerTimeHisto,
+		     float aUpperPeHisto, float aLowerPeHisto,
+		     float *aEventPosition, float *aEventDirection, 
+		     float aResidualTimeBuffer, int *aRingColor,
+		     float aPixel, float aTheta2D, float *aCosTheta, 
+		     float *aPhi, float aConeAlpha, int aNumberOfRings,
+		     int aColorMethod, float aTau,
+		     vector<float> &aHitX, vector<float> &aHitY, vector<float> &aHitZ, 
+		     vector<float> &aPe, vector<float> &aTrueTime ){
+
+  PI = 4.0*atan(1);
+  setCylinderRadius(aCylinderRadius);
+  setCylinderHeight(aCylinderHeight);
+  setReduction(aReduction);
+  setMaxPe(aMaxPe);
+  setUpperTime(aUpperTime);
+  setLowerTime(aLowerTime);
+  setUpperPeHisto(aUpperPeHisto);
+  setLowerPeHisto(aLowerPeHisto);
+  setTau(aTau);
+  setUpperTimeHisto(aUpperTimeHisto);
+  setLowerTimeHisto(aLowerTimeHisto);
+  setUpperPe(aUpperPe);
+  setLowerPe(aLowerPe);
+  setTheta2D(aTheta2D);
+  setNumberOfRings(aNumberOfRings);
+  setResidualTimeBuffer(aResidualTimeBuffer);
+  setPixel(aPixel);
+  setHitX(aHitX);
+  setHitY(aHitY);
+  setHitZ(aHitZ);
+  setPe(aPe);
+  setTrueTime(aTrueTime);
+  setCosTheta(aCosTheta);
+  setPhi(aPhi);
+  setConeAlpha(aConeAlpha);
+  setEventDirection(aEventDirection);
+  setEventPosition(aEventPosition);
+  setColorMethod(aColorMethod);
+  setRingColor(aRingColor);
+
+}
+void drawevent::draw2DBackground(){
+
+  glBegin(GL_QUADS);
+  glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+  glVertex3f(-PI*iCylinderRadius/iReduction,
+	     -iCylinderHeight/(2*iReduction), 0);
+  glVertex3f(-PI*iCylinderRadius/iReduction,
+	     iCylinderHeight/(2*iReduction), 0);
+  glVertex3f(PI*iCylinderRadius/iReduction,
+	     iCylinderHeight/(2*iReduction), 0);
+  glVertex3f(PI*iCylinderRadius/iReduction,
+	     -iCylinderHeight/(2*iReduction), 0);
+  glEnd();
+
+  // Draw the Top and Bottom                                                                 
+  float X=0, Y=0, Z=0;
+  float posx = 0,
+    posy = (iCylinderRadius+iCylinderHeight/2)/iReduction,
+    posz = 0;
+  float dirx = 0,
+    diry = 0,
+    dirz = 1;
+
+  float panels = 100;
+  float angle = (2 * PI / panels);
+  glBegin(GL_TRIANGLE_FAN);
+  //Draw Origin                                                                              
+  sphericalTransform top(X, Y, Z, dirz, atan2(dirx,diry),
+                         posx, posy, posz);
+  top.returnVector(X, Y, Z);
+  glVertex3f(X,Y,Z);
+  for(int i=0; i < panels+1; i++){
+    float px = (iCylinderRadius/iReduction)*cos(angle * i);
+    float py = (iCylinderRadius/iReduction)*sin(angle * i);
+    float pz = 0;
+
+    sphericalTransform transform(px, py, pz, dirz, atan2(dirx,diry),
+				 posx, posy, posz);
+    transform.returnVector(px, py, pz);
+    glVertex3f(px,py,pz);
+  }
+  glEnd();
+
+  X = 0;
+  Y = 0;
+  Z = 0;
+  glBegin(GL_TRIANGLE_FAN);
+  //Draw Origin                                                                              
+  sphericalTransform bottom(X, Y, Z, dirz, atan2(dirx,diry),
+			    posx, -posy, posz);
+  bottom.returnVector(X, Y, Z);
+  glVertex3f(X,Y,Z);
+  for(int i=0; i < panels+1; i++){
+    float px = (iCylinderRadius/iReduction)*cos(angle * i);
+    float py = (iCylinderRadius/iReduction)*sin(angle * i);
+    float pz = 0;
+
+    sphericalTransform transform(px, py, pz, dirz, atan2(dirx,diry),
+				 posx, -posy, posz);
+    transform.returnVector(px, py, pz);
+    glVertex3f(px,py,pz);
+  }
+  glEnd();
+
+}
+void drawevent::draw2DEventPoints(){
+  
+  float R=0, G=0, B=0;
+  float error = 0.01;
+  float pixSize = 0;
+  float topcolor, bottomcolor;
+  vector<float> *colorvector;
+  switch (iColorMethod) {
+  case 0: // Pe
+    topcolor = iUpperPeHisto;
+    bottomcolor = iLowerPeHisto;
+    colorvector = iPe;
+    break;
+  case 1: // Time
+    topcolor = iUpperTimeHisto;
+    bottomcolor = iLowerTimeHisto;
+    colorvector = iTrueTime;
+    break;
+  }
+
+  RGBcolorSpectrum rainbow(topcolor-bottomcolor);
+
+  for ( unsigned int i=0; i < iHitX->size(); i++ ){
+    pointmodification thispoint(iPe->at(i), iTrueTime->at(i), iHitX->at(i), 
+				iHitY->at(i), iHitZ->at(i),
+                                iMaxPe, iUpperTime, iLowerTime, iUpperPe, iLowerPe,
+                                iEventPosition, iEventDirection, iTau,
+                                iReduction, iResidualTimeBuffer, iPixel);
+    if ( thispoint.firstCuts() ) {
+      if ( thispoint.secondCuts() ){
+        pixSize = thispoint.varyPoints();
+	glPointSize(pixSize);
+        glBegin(GL_POINTS);
+	rainbow.returnSpectrum(colorvector->at(i)-bottomcolor, R, G, B);
+        glColor3f(R, G, B);
+
+        if( iHitZ->at(i)/iReduction >= iCylinderHeight/(2.0*iReduction) - error ){ // TOP            
+          float X=sqrt(iHitX->at(i)/iReduction*iHitX->at(i)/iReduction 
+		       + iHitY->at(i)/iReduction*iHitY->at(i)/iReduction) * 
+	    cos( atan2(iHitX->at(i)/iReduction, iHitY->at(i)/iReduction)+iTheta2D );
+          float Y=-sqrt(iHitX->at(i)/iReduction*iHitX->at(i)/iReduction 
+			+ iHitY->at(i)/iReduction*iHitY->at(i)/iReduction) *
+            sin( atan2(iHitX->at(i)/iReduction, iHitY->at(i)/iReduction)+iTheta2D );
+          float Z=-0.1;
+          float posx = 0,
+            posy = (iCylinderRadius+iCylinderHeight/2.0)/iReduction,
+            posz = 0;
+          float dirx = 0,
+            diry = 0,
+            dirz = 1;
+
+          sphericalTransform top(X, Y, Z, dirz, atan2(dirx,diry)-PI/2.0,
+				 posx, posy, posz);
+          top.returnVector(X, Y, Z);
+          glVertex3f(X,Y,Z);
+
+	}
+        else if( iHitZ->at(i)/iReduction <= -iCylinderHeight/(2.0*iReduction) + error ){ // BOTTOM
+
+          float X=sqrt(iHitX->at(i)/iReduction*iHitX->at(i)/iReduction 
+		       + iHitY->at(i)/iReduction*iHitY->at(i)/iReduction) 
+	    * cos( atan2(iHitX->at(i)/iReduction, iHitY->at(i)/iReduction)+iTheta2D );
+          float Y=sqrt(iHitX->at(i)/iReduction*iHitX->at(i)/iReduction 
+		       + iHitY->at(i)/iReduction*iHitY->at(i)/iReduction) 
+	    * sin( atan2(iHitX->at(i)/iReduction, iHitY->at(i)/iReduction)+iTheta2D );
+          float Z=-0.1;
+          float posx = 0,
+            posy = -(iCylinderRadius+iCylinderHeight/2.0)/iReduction,
+            posz = 0;
+          float dirx = 0,
+            diry = 0,
+            dirz = 1;
+
+          sphericalTransform bottom(X, Y, Z, dirz, atan2(dirx,diry)-PI/2.0,
+				    posx, posy, posz);
+          bottom.returnVector(X, Y, Z);
+          glVertex3f(X,Y,Z);
+
+        }
+        else {
+          float theAngle = atan2(iHitX->at(i), iHitY->at(i));
+          glVertex3f((iCylinderRadius/iReduction) 
+		     * (atan2(iCylinderRadius*cos(iTheta2D+theAngle),
+			      iCylinderRadius*sin(theAngle + iTheta2D))),
+                     iHitZ->at(i)/iReduction, -0.1);
+        }
+        glEnd();
+      }
+    }
+  }
+  
+}
+void drawevent::draw2DCherenkovRing(){
+  
+  for (int q=0; q < iNumberOfRings; q++){//draw each ring
+    setNewDirection(q);
+    float posx = iEventPosition[q*3 + 0],
+      posy = iEventPosition[q*3 + 1],
+      posz = iEventPosition[q*3 + 2];
+    float dirx = iNewDirection[0] - posx,
+      diry = iNewDirection[1] - posy,
+      dirz = iNewDirection[2] - posz;    
+    float panels = 1000;
+    float angle = (2 * PI / panels);
+    // radius = |dir|*tan(theta-cherenkov)
+    float radius = sqrt( dirx*dirx +
+			 diry*diry +
+			 dirz*dirz )
+      * tan(acos(3.0/4.0));
+
+    float stepsize = 0.1;
+    float accuracy = 0.001;
+    glPointSize(3.5);
+    glBegin(GL_POINTS);
+    if(iRingColor[q] == 0) // Clear
+      glColor4f(0, 0, 0, 0.0);
+    if(iRingColor[q] == 1) // Black
+      glColor4f(0, 0, 0, 1.0);
+    if(iRingColor[q] == 2) // White
+      glColor4f(1, 1, 1, 1.0);
+    if(iRingColor[q] == 3) // Red
+      glColor4f(1, 0, 0, 1.0);
+    if(iRingColor[q] == 4) // Green
+      glColor4f(0, 1, 0, 1.0);
+    if(iRingColor[q] == 5) // Blue
+      glColor4f(0, 0, 1, 1.0);
+    for( int j=0; j < panels; j++ ){
+      float px = radius*cos(angle * j);
+      float py = radius*sin(angle * j);
+      float pz = 0;
+
+      sphericalTransform transform(px, py, pz, iCosTheta[q], iPhi[q],
+				   iNewDirection[0], iNewDirection[1], iNewDirection[2]);
+      transform.returnVector(px, py, pz);
+      float cDirX = px - posx;
+      float cDirY = py - posy;
+      float cDirZ = pz - posz;
+      cylinderStep stepper2D( posx, posy, posz, cDirX, cDirY, cDirZ,
+			    stepsize, iCylinderRadius / iReduction,
+			    iCylinderHeight / iReduction, accuracy );
+      stepper2D.findIntersection();
+      px = stepper2D.getposX();
+      py = stepper2D.getposY();
+      pz = stepper2D.getposZ();
+      
+      // Transform to 2D coordinates and draw
+      if( (pz <= (iCylinderHeight/iReduction)/2.0 + accuracy
+	   && pz >= -(iCylinderHeight/iReduction)/2.0 - accuracy) &&
+	  (sqrt(px*px+py*py) <= (iCylinderRadius/iReduction) + accuracy)){
+	if( pz < (iCylinderHeight/iReduction)/2.0 - accuracy
+	    && pz > -(iCylinderHeight/iReduction)/2.0 + accuracy){
+
+	  float theAngle = atan2(px, py);
+	  glVertex3f((iCylinderRadius / iReduction) 
+		     * (atan2((iCylinderRadius / iReduction)*cos(iTheta2D+theAngle), 
+			      (iCylinderRadius / iReduction)*sin(theAngle + iTheta2D))),
+		     pz, -0.11);
+	}
+	else if(pz >= (iCylinderHeight/iReduction)/2.0 - accuracy){ // TOP                                                                         
+
+	  float X=sqrt(px*px + py*py) *
+	    cos( atan2(px, py)+iTheta2D );
+	  float Y=-sqrt(px*px + py*py) *
+	    sin( atan2(px, py)+iTheta2D );
+	  float Z=-0.11;
+	  float xpos = 0,
+	    ypos = ((iCylinderRadius / iReduction)+(iCylinderHeight/iReduction)/2.0),
+	    zpos = 0;
+	  float xdir = 0,
+	    ydir = 0,
+	    zdir = 1;
+
+	  sphericalTransform top(X, Y, Z, zdir, atan2(xdir, ydir)-PI/2.0,
+				 xpos, ypos, zpos);
+	  top.returnVector(X, Y, Z);
+	  glVertex3f(X,Y,Z);
+
+	}
+	else{ // BOTTOM                                           
+
+	  float X=sqrt(px*px + py*py) *
+	    cos( atan2(px, py)+iTheta2D );
+	  float Y=sqrt(px*px + py*py) *
+	    sin( atan2(px, py)+iTheta2D );
+	  float Z=-0.11;
+	  float xpos = 0,
+	    ypos = -((iCylinderRadius / iReduction)+(iCylinderHeight/iReduction)/2.0),
+	    zpos = 0;
+	  float xdir = 0,
+	    ydir = 0,
+	    zdir = 1;
+
+	  sphericalTransform bottom(X, Y, Z, zdir, atan2(xdir, ydir)-PI/2.0,
+				    xpos, ypos, zpos);
+	  bottom.returnVector(X, Y, Z);
+	  glVertex3f(X,Y,Z);
+	}
+      }
+      // interesect again if the event is outside
+      if ( sqrt(posx*posx + posy*posy) > iCylinderRadius / iReduction ||
+	   posz > fabs( iCylinderHeight / (2.0 * iReduction ))){
+	stepper2D.stepForwards();
+	stepper2D.findIntersection();
+	px = stepper2D.getposX();
+	py = stepper2D.getposY();
+	pz = stepper2D.getposZ();
+      }
+      // Transform to 2D coordinates and draw
+      if( (pz <= (iCylinderHeight/iReduction)/2.0 + accuracy
+	   && pz >= -(iCylinderHeight/iReduction)/2.0 - accuracy) &&
+	  (sqrt(px*px+py*py) <= (iCylinderRadius/iReduction) + accuracy)){
+	if( pz < (iCylinderHeight/iReduction)/2.0 - accuracy
+	    && pz > -(iCylinderHeight/iReduction)/2.0 + accuracy){
+
+	  float theAngle = atan2(px, py);
+	  glVertex3f((iCylinderRadius / iReduction) 
+		     * (atan2((iCylinderRadius / iReduction)*cos(iTheta2D+theAngle), 
+			      (iCylinderRadius / iReduction)*sin(theAngle + iTheta2D))),
+		     pz, -0.11);
+	}
+	else if(pz >= (iCylinderHeight/iReduction)/2.0 - accuracy){ // TOP                                                                         
+
+	  float X=sqrt(px*px + py*py) *
+	    cos( atan2(px, py)+iTheta2D );
+	  float Y=-sqrt(px*px + py*py) *
+	    sin( atan2(px, py)+iTheta2D );
+	  float Z=-0.11;
+	  float xpos = 0,
+	    ypos = ((iCylinderRadius / iReduction)+(iCylinderHeight/iReduction)/2.0),
+	    zpos = 0;
+	  float xdir = 0,
+	    ydir = 0,
+	    zdir = 1;
+
+	  sphericalTransform top(X, Y, Z, zdir, atan2(xdir, ydir)-PI/2.0,
+				 xpos, ypos, zpos);
+	  top.returnVector(X, Y, Z);
+	  glVertex3f(X,Y,Z);
+
+	}
+	else{ // BOTTOM                                           
+
+	  float X=sqrt(px*px + py*py) *
+	    cos( atan2(px, py)+iTheta2D );
+	  float Y=sqrt(px*px + py*py) *
+	    sin( atan2(px, py)+iTheta2D );
+	  float Z=-0.11;
+	  float xpos = 0,
+	    ypos = -((iCylinderRadius / iReduction)+(iCylinderHeight/iReduction)/2.0),
+	    zpos = 0;
+	  float xdir = 0,
+	    ydir = 0,
+	    zdir = 1;
+
+	  sphericalTransform bottom(X, Y, Z, zdir, atan2(xdir, ydir)-PI/2.0,
+				    xpos, ypos, zpos);
+	  bottom.returnVector(X, Y, Z);
+	  glVertex3f(X,Y,Z);
+	}
+      }
+
+    }
+    glEnd();
+  }
+}
+
+void drawevent::draw3DDetector(){
+
+  float X=0, Y=0, Z=0;
+  //float dirx=1, diry=0, dirz=0, posx=0, posy=0, posz=0;                                                                                                    
+  float dirx = 0, diry = 0, dirz = 1,
+    posx = 0,
+    posy = 0,
+    posz = (iCylinderHeight/2)/iReduction;
+  float panels = 100;
+  float angle = (2 * PI / panels);
+  float radius = iCylinderRadius/iReduction;
+  float cR = 1.0, cG = 1.0, cB = 1.0;
+  float detectorAlpha = 0.3;
+  // Draw the bottom of the detector                                                                                                                         
+  glBegin(GL_TRIANGLE_FAN);
+  glColor4f(cR, cG, cB, detectorAlpha);
+  //Draw Origin                                                                                                                                              
+  sphericalTransform bottom(X, Y, Z, dirz, atan2(dirx, diry),
+                            posx, posy, posz);
+  bottom.returnVector(X, Y, Z);
+  glVertex3f(X,Y,Z);
+  for(int i=0; i < panels+1; i++){
+    float px = radius*cos(angle * i);
+    float py = radius*sin(angle * i);
+    float pz = 0;
+    sphericalTransform transform(px, py, pz, dirz, atan2(dirx, diry),
+                                 posx, posy, posz);
+    transform.returnVector(px, py, pz);
+    glVertex3f(px,py,pz);
+  }
+  glEnd();
+
+  // Draw the top of the detector                                                                                                                            
+  X=0;
+  Y=0;
+  Z=0;
+  glBegin(GL_TRIANGLE_FAN);
+  glColor4f(cR, cG, cB, detectorAlpha);
+  //Draw Origin                                                                                                                                              
+  sphericalTransform top(X, Y, Z, dirz, atan2(dirx, diry),
+                         posx, posy, -posz);
+  top.returnVector(X, Y, Z);
+  glVertex3f(X,Y,Z);
+  for(int i=0; i < panels+1; i++){
+    float px = radius*cos(angle * i);
+    float py = radius*sin(angle * i);
+    float pz = 0;
+
+    sphericalTransform transform(px, py, pz, dirz, atan2(dirx, diry),
+				 posx, posy, -posz);
+    transform.returnVector(px, py, pz);
+    glVertex3f(px,py,pz);
+  }
+  glEnd();
+  // Draw the Walls of the detector
+                   
+  X=0;
+  Y=0;
+  Z=0;
+  glBegin(GL_QUAD_STRIP);
+  glColor4f(cR, cG, cB, detectorAlpha);
+  for(int i=0; i < panels+1; i++){
+    float px = radius*cos(angle * i);
+    float py = radius*sin(angle * i);
+    float pz = 0;
+    sphericalTransform transformTop(px, py, pz, dirz, atan2(dirx,diry),
+				    posx, posy, posz);
+    transformTop.returnVector(px, py, pz);
+    glVertex3f(px,py,pz);
+    px = radius*cos(angle * i);
+    py = radius*sin(angle * i);
+    pz = 0;
+    sphericalTransform transformBottom(px, py, pz, dirz, atan2(dirx,diry),
+				       posx, posy, -posz);
+    transformBottom.returnVector(px, py, pz);
+    glVertex3f(px,py,pz);
+
+  }
+  glEnd();
+
+}
+void drawevent::draw3DEventPoints(){
+ 
+  float R=0, G=0, B=0;
+  float pixSize = 0;
+  float topcolor, bottomcolor;
+  vector<float> *colorvector;
+  switch (iColorMethod) {
+  case 0: // Pe
+    topcolor = iUpperPeHisto;
+    bottomcolor = iLowerPeHisto;
+    colorvector = iPe;
+    break;
+  case 1: // Time
+    topcolor = iUpperTimeHisto;
+    bottomcolor = iLowerTimeHisto;
+    colorvector = iTrueTime;
+    break;
+  }
+
+
+  RGBcolorSpectrum rainbow(topcolor-bottomcolor);
+
+  for ( unsigned int i=0; i < iHitX->size(); i++ ){
+    pointmodification thispoint(iPe->at(i), iTrueTime->at(i), 
+				iHitX->at(i), iHitY->at(i), iHitZ->at(i),
+				iMaxPe, iUpperTime, iLowerTime, iUpperPe, iLowerPe,
+                                iEventPosition, iEventDirection, iTau,
+                                iReduction, iResidualTimeBuffer, iPixel);
+    if ( thispoint.firstCuts() ) {
+      if ( thispoint.secondCuts() ){
+        rainbow.returnSpectrum(colorvector->at(i)-bottomcolor, R, G, B);
+        glColor3f(R, G, B);
+        pixSize = thispoint.varyPoints();
+        glPointSize(pixSize);
+        glBegin(GL_POINTS);
+        glVertex3f(iHitX->at(i)/iReduction, iHitY->at(i)/iReduction, iHitZ->at(i)/iReduction);
+        glEnd();
+      }
+    }
+  }
+
+}
+void drawevent::draw3DCherenkovRing(){
+  for (int q=0; q < iNumberOfRings; q++){//draw each ring
+    float X=0, Y=0, Z=0;
+    setNewDirection(q);
+    float posx = iEventPosition[q*3 + 0],
+      posy = iEventPosition[q*3 + 1],
+      posz = iEventPosition[q*3 + 2];
+    float dirx = iNewDirection[0] - posx,
+      diry = iNewDirection[1] - posy,
+      dirz = iNewDirection[2] - posz;
+    
+    float panels = 1000;
+    float angle = (2 * PI / panels);
+    
+    float radius = sqrt( dirx*dirx +
+			 diry*diry +
+			 dirz*dirz )
+      * tan(acos(3.0/4.0));
+    glBegin(GL_TRIANGLE_FAN);
+    glColor4f(1, 0.27, 0, iConeAlpha);
+    //Draw Origin 
+    
+    sphericalTransform origin(X, Y, Z, iCosTheta[q], iPhi[q],
+			      posx, posy, posz);
+    origin.returnVector(X, Y, Z);
+    if(iConeAlpha > 0)
+      glVertex3f(X,Y,Z);
+    for(int i=0; i < panels+1; i++){
+      float px = radius*cos(angle * i);
+      float py = radius*sin(angle * i);
+      float pz = 0;
+
+      sphericalTransform transform(px, py, pz, iCosTheta[q], iPhi[q],
+				   iNewDirection[0], iNewDirection[1], iNewDirection[2]);
+      transform.returnVector(px, py, pz);
+      if(iConeAlpha > 0)
+	glVertex3f(px,py,pz);
+    }
+    glEnd();
+
+
+    float stepsize = 0.1;
+    float accuracy = 0.001;
+    glPointSize(3.5);
+    glBegin(GL_POINTS);
+    if(iRingColor[q] == 0) // Clear
+      glColor4f(0, 0, 0, 0.0);
+    if(iRingColor[q] == 1) // Black
+      glColor4f(0, 0, 0, 1.0);
+    if(iRingColor[q] == 2) // White
+      glColor4f(1, 1, 1, 1.0);
+    if(iRingColor[q] == 3) // Red
+      glColor4f(1, 0, 0, 1.0);
+    if(iRingColor[q] == 4) // Green
+      glColor4f(0, 1, 0, 1.0);
+    if(iRingColor[q] == 5) // Blue
+      glColor4f(0, 0, 1, 1.0);
+
+    for( int j=0; j < panels; j++ ){
+      float px = radius*cos(angle * j);
+      float py = radius*sin(angle * j);
+      float pz = 0;
+
+      sphericalTransform transform(px, py, pz, iCosTheta[q], iPhi[q],
+				   iNewDirection[0], iNewDirection[1], iNewDirection[2]);
+      transform.returnVector(px, py, pz);
+      float cDirX = px - posx;
+      float cDirY = py - posy;
+      float cDirZ = pz - posz;
+      cylinderStep stepper( posx, posy, posz, cDirX, cDirY, cDirZ,
+			    stepsize, iCylinderRadius / iReduction,
+			    iCylinderHeight / iReduction, accuracy );
+      stepper.findIntersection();
+      px = stepper.getposX();
+      py = stepper.getposY();
+      pz = stepper.getposZ();
+      glVertex3f(px,py,pz);
+      // interesect again if the event is outside
+      if ( sqrt(posx*posx + posy*posy) > iCylinderRadius / iReduction ||
+	   posz > fabs( iCylinderHeight / (2.0 * iReduction ))){
+	stepper.stepForwards();
+	stepper.findIntersection();
+	px = stepper.getposX();
+	py = stepper.getposY();
+	pz = stepper.getposZ();
+	glVertex3f(px,py,pz);
+      }      
+    }
+    glEnd();
+    // Draw the vector of the event
+    glLineWidth(3.0);
+    glBegin(GL_LINES);
+    glColor4f(1, 0.27, 0, 1.0);
+    glVertex3f(iEventPosition[q*3 + 0], iEventPosition[q*3 + 1],
+	       iEventPosition[q*3 + 2]);
+    glVertex3f(iNewDirection[0], iNewDirection[1],
+	       iNewDirection[2]);
+    glEnd();
+    glPointSize(6.0);
+    glBegin(GL_POINTS);
+    glColor3f(1.0, 0.0, 0.0);
+    glVertex3f(iEventPosition[q*3 + 0], iEventPosition[q*3 + 1],
+	       iEventPosition[q*3 + 2]);
+    glEnd();
+  }
+}
+
+void drawevent::drawProjection(){
+ 
+  float R=0, G=0, B=0;
+  float pixSize = 0;
+  float topcolor, bottomcolor;
+  vector<float> *colorvector;
+  switch (iColorMethod) {
+  case 0: // Pe
+    topcolor = iUpperPeHisto;
+    bottomcolor = iLowerPeHisto;
+    colorvector = iPe;
+    break;
+  case 1: // Time
+    topcolor = iUpperTimeHisto;
+    bottomcolor = iLowerTimeHisto;
+    colorvector = iTrueTime;
+    break;
+  }
+
+
+  RGBcolorSpectrum rainbow(topcolor-bottomcolor);
+
+  for ( unsigned int i=0; i < iHitX->size(); i++ ){
+    pointmodification thispoint(iPe->at(i), iTrueTime->at(i), 
+				iHitX->at(i), iHitY->at(i), iHitZ->at(i),
+				iMaxPe, iUpperTime, iLowerTime, iUpperPe, iLowerPe,
+                                iEventPosition, iEventDirection, iTau,
+                                iReduction, iResidualTimeBuffer, iPixel);
+    if ( thispoint.firstCuts() ) {
+      if ( thispoint.secondCuts() ){
+        rainbow.returnSpectrum(colorvector->at(i)-bottomcolor, R, G, B);
+        glColor3f(R, G, B);
+        pixSize = thispoint.varyPoints();
+        glPointSize(pixSize);
+	// Define a Line The event vertex to the hit pmt
+	double theLine[3];
+	theLine[0] = iHitX->at(i)/iReduction - iEventPosition[0];
+	theLine[1] = iHitY->at(i)/iReduction - iEventPosition[1];
+	theLine[2] = iHitZ->at(i)/iReduction - iEventPosition[2];
+	// Normalize the line to a unit sphere
+	double magLine = sqrt(pow(theLine[0],2)+pow(theLine[1],2)+pow(theLine[2],2));
+	double theLocation[3];
+	for(int j=0; j<3; j++)
+	  theLocation[j]=theLine[j]/magLine;
+        glBegin(GL_POINTS);
+        glVertex3f(theLocation[0], theLocation[1], theLocation[2]);
+        glEnd();
+      }
+    }
+  }
+
+}  
+
+void drawevent::drawProjectionPhiTheta(){
+	
+	float R=0, G=0, B=0;
+	float pixSize = 0;
+	float topcolor, bottomcolor;
+	vector<float> *colorvector;
+	switch (iColorMethod) {
+		case 0: // Pe
+			topcolor = iUpperPeHisto;
+			bottomcolor = iLowerPeHisto;
+			colorvector = iPe;
+			break;
+		case 1: // Time
+			topcolor = iUpperTimeHisto;
+			bottomcolor = iLowerTimeHisto;
+			colorvector = iTrueTime;
+			break;
+	}
+	
+	
+	RGBcolorSpectrum rainbow(topcolor-bottomcolor);
+	
+	for ( unsigned int i=0; i < iHitX->size(); i++ ){
+		pointmodification thispoint(iPe->at(i), iTrueTime->at(i), 
+									iHitX->at(i), iHitY->at(i), iHitZ->at(i),
+									iMaxPe, iUpperTime, iLowerTime, iUpperPe, iLowerPe,
+									iEventPosition, iEventDirection, iTau,
+									iReduction, iResidualTimeBuffer, iPixel);
+		if ( thispoint.firstCuts() ) {
+			if ( thispoint.secondCuts() ){
+				rainbow.returnSpectrum(colorvector->at(i)-bottomcolor, R, G, B);
+				glColor3f(R, G, B);
+				pixSize = thispoint.varyPoints();
+				glPointSize(pixSize);
+				// Define a Line The event vertex to the hit pmt
+				double theLine[3];
+				theLine[0] = iHitX->at(i)/iReduction - iEventPosition[0];
+				theLine[1] = iHitY->at(i)/iReduction - iEventPosition[1];
+				theLine[2] = iHitZ->at(i)/iReduction - iEventPosition[2];
+				// Normalize the line to a unit sphere
+				double magLine = sqrt(pow(theLine[0],2)+pow(theLine[1],2)+pow(theLine[2],2));
+				double theLocation[3];
+				theLocation[0]=((atan2(theLine[1]/magLine,theLine[0]/magLine)-PI/2.0)/PI +0.5 )*0.9;
+				theLocation[1]=(theLine[2]/magLine)/2.0;
+				theLocation[2]=0;
+				glBegin(GL_POINTS);
+				glVertex3f(theLocation[0], theLocation[1], theLocation[2]);
+				glEnd();
+			}
+		}
+	}
+	
+}  
+
+
+drawevent::~drawevent(){}
+void drawevent::setNewDirection(int q){
+  float unitLength = sqrt( pow(iEventDirection[q*3 + 0], 2)
+			   + pow(iEventDirection[q*3 + 1], 2)
+			   + pow(iEventDirection[q*3 + 2], 2) )/2;
+  for(int i=0; i<3; i++)
+    iNewDirection[i] = (iEventPosition[q*3 + i] + iEventDirection[q*3 + i]/unitLength );
+}

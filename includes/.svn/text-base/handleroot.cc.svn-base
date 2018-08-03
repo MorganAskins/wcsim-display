@@ -1,0 +1,167 @@
+/* 
+   This software is intended to reconstruct and display
+   an event from WCSim root output files in 3D.
+   The intentions are for this software to provide a
+   3D environment using OpenGL independent of root that
+   allows the user to explore the PMT hits by zooming,
+   rotating, and translating the origin.
+   This software should further be able to analyze an event
+   by coloring coding based upon energy as well as making
+   various cuts. All of this should be packaged neatly into
+   a very simple GUI so that the user doesn't need to
+   know the source code to navigate.
+*/
+#include "handleroot.h"
+using namespace std;
+
+
+void handleRoot::fillGeo(TString filename, vector<float> &pmtID, 
+	     vector<float> &posX, vector<float> &posY, 
+	     vector<float> &posZ){
+
+  TFile *file = new TFile(filename);
+  TTree *gtree = (TTree*)file->Get("wcsimGeoT");
+  
+  
+  //Get the geometry tree
+  WCSimRootGeom *wcsimrootgeom = new WCSimRootGeom();
+  TBranch *gbranch = gtree->GetBranch("wcsimrootgeom");
+  gbranch->SetAddress(&wcsimrootgeom);
+  gtree->GetEntry(0);
+
+  int numPMTs = wcsimrootgeom->GetWCNumPMT();
+  CylinderHeight = wcsimrootgeom->GetWCCylLength();
+  CylinderRadius = wcsimrootgeom->GetWCCylRadius();
+
+  for (int i = 0; i < numPMTs; i++){
+    WCSimRootPMT thePMT = wcsimrootgeom->GetPMT(i);
+    pmtID.push_back (i + 1);
+    posX.push_back(thePMT.GetPosition(0));
+    posY.push_back(thePMT.GetPosition(1));
+    posZ.push_back(thePMT.GetPosition(2));
+  }
+
+  // file->Delete();
+  // wcsimrootgeom->Delete();
+
+  delete file;
+  delete wcsimrootgeom;
+
+  return;
+}
+
+
+handleRoot::handleRoot(TString filename, int argc, char **argv, int aEventNum){
+  
+  /* Set up the WCSim file */
+  gSystem->Load("libWCSimRoot.so");
+  EventNum = aEventNum;
+
+  fillGeo(filename, pmtID, pmtX, pmtY, pmtZ);
+
+  TFile *f = new TFile(filename);
+  TTree *tree = (TTree*)f->Get("wcsimT");
+  // Reconstruction
+  TTree *truetree = (TTree*)f->Get("TRUTH");
+  TTree *FITA = (TTree*)f->Get("FITA");
+
+  vertexTrue[0] = 9;		// Used for error checking in main.cpp
+
+  if(FITA != NULL && truetree != NULL ){
+    truetree->SetBranchAddress("vertex", &vertexTrue);
+    truetree->SetBranchAddress("direction", &dirTrue);
+    FITA->SetBranchAddress("vertex", &vertexReco);
+    FITA->SetBranchAddress("direction", &dirReco);
+    truetree->GetEntry(EventNum);
+    FITA->GetEntry(EventNum);
+  }
+
+
+  totalEvents = tree->GetEntries();
+
+  //Get the event tree
+  WCSimRootEvent *wcsimrootevent = new WCSimRootEvent();
+  TBranch *branch = tree->GetBranch("wcsimrootevent");
+  branch->SetAddress(&wcsimrootevent);
+  branch->SetAutoDelete(kTRUE);
+
+  WCSimRootTrigger *wcsimroottrigger;
+  tree->GetEvent(EventNum);
+  branch->GetEvent(EventNum);
+
+  wcsimroottrigger = wcsimrootevent->GetTrigger(0);
+  int numHits = wcsimroottrigger->GetNcherenkovdigihits();
+  hitX.resize(numHits);
+  hitY.resize(numHits);
+  hitZ.resize(numHits);
+  Pe.resize(numHits);
+  time.resize(numHits);
+
+
+  int j=0;
+  /*
+  for (int i=0; i<numHits; i++){
+    TObject *Hit = (wcsimroottrigger->GetCherenkovHits())->At(i);
+    TObject *Time = (wcsimroottrigger->GetCherenkovHitTimes())->At(i);
+    WCSimRootCherenkovHit *chit = dynamic_cast<WCSimRootCherenkovHit*>(Hit);
+    WCSimRootCherenkovHitTime *cTime = dynamic_cast<WCSimRootCherenkovHitTime*>(Time);
+    int tubeID = chit->GetTubeID() - 1;
+    time[j] =cTime->GetTruetime();
+    hitX[j] = pmtX[tubeID];
+    hitY[j] = pmtY[tubeID];
+    hitZ[j] = pmtZ[tubeID];
+    Pe[j] = *//*chit->GetTotalPe(0) + *//*chit->GetTotalPe(1);
+    j++;
+    
+  } */
+ 
+  // Using digital hits
+  for (int i=0; i<numHits; i++){
+    TObject *Hit = (wcsimroottrigger->GetCherenkovDigiHits())->At(i);
+    WCSimRootCherenkovDigiHit *theHit = dynamic_cast<WCSimRootCherenkovDigiHit*>(Hit);
+    int tubeID = theHit->GetTubeId() -1;
+    time[j] = theHit->GetT();
+    hitX[j] = pmtX[tubeID];
+    hitY[j] = pmtY[tubeID];
+    hitZ[j] = pmtZ[tubeID];
+    Pe[j] = theHit->GetQ();
+    j++;
+
+  }
+
+  delete f;
+  delete wcsimrootevent;
+  
+  return;
+}
+
+void handleRoot::returnVectors(vector<float> &pmtid, vector<float> &pmtx, 
+			       vector<float> &pmty, vector<float> &pmtz, 
+			       vector<float> &hitx, vector<float> &hity, 
+			       vector<float> &hitz, vector<float> &pe, 
+			       vector<float> &TIME, float &CylHeight,
+			       float &CylRadius, int &NumberofEvents,
+			       double *vertexT, double *vertexR,
+			       double *dirT, double *dirR){
+
+  pmtid = pmtID;
+  pmtx = pmtX;
+  pmty = pmtY;
+  pmtz = pmtZ;
+  hitx = hitX;
+  hity = hitY;
+  hitz = hitZ;
+  pe = Pe;
+  TIME = time;
+  CylHeight = CylinderHeight;
+  CylRadius = CylinderRadius;
+  NumberofEvents = totalEvents;
+  for(int i=0; i<3; i++){
+    vertexT[i] = vertexTrue[i];
+    dirT[i] = dirTrue[i];
+    vertexR[i] = vertexReco[i];
+    dirR[i] = dirReco[i];
+  }
+
+  return;
+}

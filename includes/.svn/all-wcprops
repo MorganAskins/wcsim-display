@@ -1,0 +1,119 @@
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/!svn/ver/2681/people/Davis/event3D/includes
+END
+RGBcolorSpectrum.cc
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/!svn/ver/2641/people/Davis/event3D/includes/RGBcolorSpectrum.cc
+END
+RGBcolorSpectrum.h
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/!svn/ver/2641/people/Davis/event3D/includes/RGBcolorSpectrum.h
+END
+oglHistogram.cc
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/!svn/ver/2641/people/Davis/event3D/includes/oglHistogram.cc
+END
+handleroot.cc
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/!svn/ver/2674/people/Davis/event3D/includes/handleroot.cc
+END
+drawevent.cc
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/!svn/ver/2681/people/Davis/event3D/includes/drawevent.cc
+END
+oglHistogram.h
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/2641/people/Davis/event3D/includes/oglHistogram.h
+END
+handleroot.h
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/!svn/ver/2657/people/Davis/event3D/includes/handleroot.h
+END
+drawevent.h
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/2681/people/Davis/event3D/includes/drawevent.h
+END
+cylinderstep.cc
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/!svn/ver/2662/people/Davis/event3D/includes/cylinderstep.cc
+END
+sphericaltransform.cc
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/svn/!svn/ver/2641/people/Davis/event3D/includes/sphericaltransform.cc
+END
+cylinderstep.h
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/2641/people/Davis/event3D/includes/cylinderstep.h
+END
+sphericaltransform.h
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/!svn/ver/2641/people/Davis/event3D/includes/sphericaltransform.h
+END
+gluistuff.h
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/2641/people/Davis/event3D/includes/gluistuff.h
+END
+pointmodification.cc
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/!svn/ver/2641/people/Davis/event3D/includes/pointmodification.cc
+END
+pointmodification.h
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/!svn/ver/2641/people/Davis/event3D/includes/pointmodification.h
+END
+glutstuff.cc
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/!svn/ver/2641/people/Davis/event3D/includes/glutstuff.cc
+END
+glutstuff.h
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/2641/people/Davis/event3D/includes/glutstuff.h
+END
+residualtime.cc
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/!svn/ver/2641/people/Davis/event3D/includes/residualtime.cc
+END
+residualtime.h
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/2641/people/Davis/event3D/includes/residualtime.h
+END
